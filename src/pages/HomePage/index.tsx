@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@mui/material";
+import { Button, Skeleton } from "@mui/material";
 
 import logo from "../../assets/images/novartis_logo.svg";
 import SelectInput from "../../components/SelectInput";
@@ -13,6 +13,7 @@ const HomePage = () => {
   const [selectedText, setSelectedText] = useState("");
   const [connected, setConnected] = useState(false);
   const [correctedSentence, setCorrectedSentence] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const editorRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -42,6 +43,7 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
+    setIsLoading(true);
     const timeout = setTimeout(() => {
       if (selectedText) {
         getSuggestions();
@@ -67,8 +69,7 @@ const HomePage = () => {
         editor.selection.setContent(replacedHTML, { format: "raw" });
       }
 
-      setSelectedText(""); // Reset selection
-      setCorrectedSentence("");
+      setSelectedText("");
     }
   };
 
@@ -81,8 +82,8 @@ const HomePage = () => {
       ws.onopen = () => {
         console.log("WebSocket connection established.");
 
+        setIsLoading(true);
         setConnected(true);
-
         ws.send(selectedText);
       };
 
@@ -94,7 +95,7 @@ const HomePage = () => {
         }
 
         wsRef.current = null;
-
+        setIsLoading(false);
         setConnected(false);
       };
 
@@ -105,6 +106,7 @@ const HomePage = () => {
       ws.onclose = (event: CloseEvent) => {
         console.log("WebSocket closed:", event);
 
+        setIsLoading(false);
         setConnected(false);
       };
 
@@ -133,20 +135,42 @@ const HomePage = () => {
           />
         </div>
         <div className="flex-1 pt-24">
-          <SelectInput onFileSelect={setEditorContent} />
+          <SelectInput
+            onFileSelect={(content) => {
+              if (typeof content !== "string") {
+                console.error("Invalid content format:", content);
+                return;
+              }
+
+              setEditorContent(content);
+
+              if (editorRef.current && editorRef.current.editor) {
+                editorRef.current.editor.setContent(content);
+              }
+            }}
+          />
 
           {correctedSentence && selectedText ? (
             <div className="mt-10">
               <h6 className="text-base font-semibold">Suggestion:</h6>
               <div className="border border-gray-300 px-3 py-2 rounded shadow flex flex-col gap-2">
-                <p className="text-xs">
+                <div className="text-xs">
                   <span className="font-semibold">Issue: </span>
                   {selectedText}
-                </p>
-                <p className="text-xs">
+                </div>
+                <div
+                  className={`text-xs w-full ${
+                    isLoading ? "flex items-center gap-1" : ""
+                  }`}
+                >
                   <span className="font-semibold">Suggestions: </span>
-                  {correctedSentence}
-                </p>
+
+                  {isLoading ? (
+                    <Skeleton width={317} height={17} />
+                  ) : (
+                    correctedSentence
+                  )}
+                </div>
                 <Button
                   sx={{ textTransform: "none" }}
                   size="small"

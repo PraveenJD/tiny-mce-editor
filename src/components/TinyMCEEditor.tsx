@@ -1,8 +1,6 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { Editor } from "@tinymce/tinymce-react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import mammoth from "mammoth";
+import axios from "axios";
 
 type TinyMCEEditorProps = {
   setEditorContent: (val: string) => void;
@@ -25,6 +23,12 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
       setEditorContent(content);
     }
   };
+
+  useEffect(() => {
+    if (editorRef.current && typeof editorContent === "string") {
+      editorRef.current.editor.setContent(editorContent);
+    }
+  }, [editorContent]);
 
   // Function to print either selected content or full editor content
   const printSelectedHTML = () => {
@@ -73,22 +77,52 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
 
   // Function to export content to PDF
   const exportToPDF = async () => {
-    if (editorRef.current) {
-      const editor = editorRef.current.editor;
-      const content = editor.getContent();
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = content;
-      document.body.appendChild(tempDiv);
+    if (!editorRef.current) return;
 
-      html2canvas(tempDiv, { scale: 2 }).then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF("p", "mm", "a4");
-        const imgWidth = 190;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-        pdf.save("document.pdf");
-        document.body.removeChild(tempDiv);
-      });
+    const editor = editorRef.current.editor;
+    const content = editor.getContent();
+
+    // Create a temporary hidden container
+    const tempContainer = document.createElement("div");
+    tempContainer.innerHTML = content;
+    tempContainer.style.padding = "20px";
+    tempContainer.style.backgroundColor = "#fff";
+    tempContainer.style.fontFamily = "Arial, sans-serif";
+    tempContainer.style.fontSize = "14px";
+    tempContainer.style.color = "#000";
+    tempContainer.style.width = "100%";
+    tempContainer.style.maxWidth = "794px"; // A4 width in pixels at 96 DPI
+    tempContainer.style.lineHeight = "1.5"; // Improve spacing
+    tempContainer.style.overflow = "hidden";
+
+    // Ensure proper page breaks for long content
+    tempContainer.querySelectorAll("p, div, img, table").forEach((el) => {
+      (el as HTMLElement).style.pageBreakInside = "avoid";
+    });
+
+    document.body.appendChild(tempContainer);
+
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10], // Margins for better spacing
+          filename: "document.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            dpi: 300,
+            letterRendering: true,
+          }, // High-quality rendering
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(tempContainer)
+        .save();
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      document.body.removeChild(tempContainer); // Cleanup
     }
   };
 
@@ -110,34 +144,32 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   };
 
   // Function to handle Word file upload and insertion into editor
-  const handleWordUpload = (event: any) => {
-    const file = event.target.files[0];
-    if (
-      file &&
-      file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
-      const reader = new FileReader();
-      reader.onload = function (e: any) {
-        const arrayBuffer = e.target.result;
-        mammoth
-          .convertToHtml({ arrayBuffer })
-          .then((result: any) => {
-            const content = result.value; // The HTML content with styles and layout
+  const handleWordUpload = async (event: any) => {
+    const file = event.target.files?.[0]; // Get the selected file
 
-            // Insert the content into TinyMCE
-            if (editorRef.current) {
-              const editor = editorRef.current.editor;
-              editor.setContent(content);
-            }
-          })
-          .catch((err: any) =>
-            console.error("Error extracting Word file:", err)
-          );
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      alert("Please upload a valid Word file.");
+    if (!file) return;
+
+    try {
+      // Create FormData and append the file
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+
+      // Send to TinyMCE DOCX to HTML API
+      const convertResponse = await axios.post(
+        "https://importdocx.converter.tiny.cloud/v2/convert/docx-html",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      // Extract converted HTML
+      const htmlContent = convertResponse.data;
+
+      // Pass converted HTML to TinyMCE
+      setEditorContent(htmlContent.html); // Assuming you pass the HTML to TinyMCE's content
+    } catch (error) {
+      console.error("Error loading document:", error);
     }
   };
 
@@ -161,7 +193,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
         init={{
           browser_spellcheck: true, // Enables browser's native spell check
           contextmenu: false, // Disables TinyMCE's context menu, allows right-click suggestions
-          height: 600,
+          height: 550,
           menubar: true,
           plugins: [
             "advlist",
@@ -228,8 +260,6 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
                 document.getElementById("uploadWordFile")?.click(),
             });
           },
-          content_style:
-            "body { font-family:Arial,Helvetica,sans-serif; font-size:14px }",
         }}
         onEditorChange={handleEditorChange}
       />

@@ -1,7 +1,7 @@
 import { FC, useState } from "react";
 
 import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-import mammoth from "mammoth";
+import axios from "axios";
 
 type SelectInputProps = {
   onFileSelect: (val: string) => void;
@@ -11,18 +11,42 @@ const SelectInput: FC<SelectInputProps> = ({ onFileSelect }) => {
   const [selectedFile, setSelectedFile] = useState("");
 
   const handleFileChange = async (event: any) => {
-    const fileName = event.target.value;
+    const fileName = event.target.value; // Get the selected filename
     setSelectedFile(fileName);
 
-    // Load file from assets folder
     try {
       const baseUrl = import.meta.env.BASE_URL;
-      const response = await fetch(`${baseUrl}files/${fileName}.docx`);
+      const fileUrl = `${baseUrl}files/${fileName}.docx`;
 
-      const arrayBuffer = await response.arrayBuffer();
-      const { value } = await mammoth.convertToHtml({ arrayBuffer });
+      // Fetch the file from the public directory
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.statusText}`);
+      }
 
-      onFileSelect(value);
+      const blob = await response.blob(); // Convert response to Blob
+      const file = new File([blob], fileName, {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+
+      // Prepare FormData
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+
+      // Send to TinyMCE DOCX to HTML API
+      const convertResponse = await axios.post(
+        "https://importdocx.converter.tiny.cloud/v2/convert/docx-html",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      // Extract converted HTML
+      const htmlContent = convertResponse.data;
+
+      // Pass converted HTML to TinyMCE
+      onFileSelect(htmlContent.html);
     } catch (error) {
       console.error("Error loading document:", error);
     }
