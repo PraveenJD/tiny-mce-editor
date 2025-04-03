@@ -16,8 +16,8 @@ const SelectInput: FC<SelectInputProps> = ({ onFileSelect }) => {
 
     // Load file from assets folder
     try {
-      const response = await fetch(`/files/${fileName}.docx`);
-      console.log(response);
+      const baseUrl = import.meta.env.BASE_URL;
+      const response = await fetch(`${baseUrl}files/${fileName}.docx`);
 
       const arrayBuffer = await response.arrayBuffer();
       const { value } = await mammoth.convertToHtml({ arrayBuffer });
