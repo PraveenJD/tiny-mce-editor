@@ -166,7 +166,7 @@ const HomePage = () => {
                   <span className="font-semibold">Suggestions: </span>
 
                   {isLoading ? (
-                    <Skeleton width={317} height={17} />
+                    <Skeleton width={300} height={17} />
                   ) : (
                     correctedSentence
                   )}

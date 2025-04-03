@@ -193,7 +193,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
         init={{
           browser_spellcheck: true, // Enables browser's native spell check
           contextmenu: false, // Disables TinyMCE's context menu, allows right-click suggestions
-          height: 550,
+          height: 520,
           menubar: true,
           paste_data_images: true,
           plugins: [
