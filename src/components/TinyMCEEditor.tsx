@@ -195,6 +195,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
           contextmenu: false, // Disables TinyMCE's context menu, allows right-click suggestions
           height: 550,
           menubar: true,
+          paste_data_images: true,
           plugins: [
             "advlist",
             "autolink",
