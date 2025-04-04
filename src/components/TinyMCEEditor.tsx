@@ -145,35 +145,24 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
       const editor = editorRef.current.editor;
       let content = editor.getContent();
 
-      // Convert images to base64 to prevent loss in production
+      // Convert image src URLs to base64
       content = await embedImagesAsBase64(content);
 
-      // Wrap content in Word-compatible HTML
-      const wordDocument = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office"
-              xmlns:w="urn:schemas-microsoft-com:office:word"
-              xmlns="http://www.w3.org/TR/REC-html40">
-        <head>
-          <meta charset="utf-8">
-          <title>Document</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.5; margin: 20px; }
-            table { border-collapse: collapse; width: 100%; }
-            table, th, td { border: 1px solid black; padding: 8px; }
-            img { max-width: 100%; height: auto; }
-          </style>
-        </head>
-        <body>${content}</body>
+      const htmlContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+          <head><meta charset='utf-8'><title>Export HTML to Word</title></head>
+          <body>${content}</body>
         </html>`;
 
-      // Create Blob for Word file
-      const blob = new Blob(["\ufeff", wordDocument], {
+      const blob = new Blob(["\ufeff" + htmlContent], {
         type: "application/msword",
       });
 
-      // Create a link and trigger download
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
+      link.href = url;
       link.download = "document.doc";
       document.body.appendChild(link);
       link.click();
