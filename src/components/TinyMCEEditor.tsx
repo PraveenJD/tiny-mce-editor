@@ -25,7 +25,11 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   };
 
   useEffect(() => {
-    if (editorRef.current && typeof editorContent === "string") {
+    if (
+      editorRef.current &&
+      editorRef.current.editor.getContent() !== editorContent &&
+      typeof editorContent === "string"
+    ) {
       editorRef.current.editor.setContent(editorContent);
     }
   }, [editorContent]);
@@ -34,7 +38,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   const printSelectedHTML = () => {
     if (editorRef.current) {
       const editor = editorRef.current.editor;
-      const selectedHTML = editor.selection.getContent(); // Get selected HTML
+      const selectedHTML = editor.selection.getContent({ format: "html" }); // Get selected HTML
 
       // If no selection, print the full content
       const contentToPrint = selectedHTML || editor.getContent();
@@ -179,6 +183,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
       new Promise((resolve, reject) => {
         const image = new Image();
         image.crossOrigin = "anonymous"; // Important for CORS
+        image.referrerPolicy = "no-referrer";
         image.src = img.src;
 
         image.onload = () => {
@@ -228,11 +233,8 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
         }
       );
 
-      // Extract converted HTML
-      const htmlContent = convertResponse.data;
-
       // Pass converted HTML to TinyMCE
-      setEditorContent(htmlContent.html); // Assuming you pass the HTML to TinyMCE's content
+      setEditorContent(convertResponse.data.html); // Assuming you pass the HTML to TinyMCE's content
     } catch (error) {
       console.error("Error loading document:", error);
     }
