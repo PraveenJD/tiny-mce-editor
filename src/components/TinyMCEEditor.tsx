@@ -126,11 +126,16 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
     }
   };
 
-  const exportToWord = () => {
+  const exportToWord = async () => {
     if (editorRef.current) {
       const editor = editorRef.current.editor;
-      const content = `\ufeff<html><body>${editor.getContent()}</body></html>`;
-      const blob = new Blob([content], {
+      let content = editor.getContent();
+
+      // Convert image src URLs to base64
+      content = await embedImagesAsBase64(content);
+
+      const htmlContent = `\ufeff<html><body>${content}</body></html>`;
+      const blob = new Blob([htmlContent], {
         type: "application/msword",
       });
       const url = URL.createObjectURL(blob);
@@ -141,6 +146,44 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const embedImagesAsBase64 = async (html: string) => {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    const imgElements = container.querySelectorAll("img");
+
+    const toBase64 = (img: HTMLImageElement): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = "anonymous"; // Important for CORS
+        image.src = img.src;
+
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(image, 0, 0);
+            try {
+              const dataURL = canvas.toDataURL("image/png");
+              img.setAttribute("src", dataURL);
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          } else {
+            reject("Canvas context is null");
+          }
+        };
+
+        image.onerror = reject;
+      });
+
+    await Promise.all(Array.from(imgElements).map((img) => toBase64(img)));
+    return container.innerHTML;
   };
 
   // Function to handle Word file upload and insertion into editor
