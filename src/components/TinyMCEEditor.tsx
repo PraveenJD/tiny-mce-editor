@@ -77,52 +77,66 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
 
   // Function to export content to PDF
   const exportToPDF = async () => {
-    if (!editorRef.current) return;
+    if (editorRef.current) {
+      const editor = editorRef.current.editor;
+      let content = editor.getContent();
 
-    const editor = editorRef.current.editor;
-    const content = editor.getContent();
+      // Convert images to base64
+      content = await embedImagesAsBase64(content);
 
-    // Create a temporary hidden container
-    const tempContainer = document.createElement("div");
-    tempContainer.innerHTML = content;
-    tempContainer.style.padding = "20px";
-    tempContainer.style.backgroundColor = "#fff";
-    tempContainer.style.fontFamily = "Arial, sans-serif";
-    tempContainer.style.fontSize = "14px";
-    tempContainer.style.color = "#000";
-    tempContainer.style.width = "100%";
-    tempContainer.style.maxWidth = "794px"; // A4 width in pixels at 96 DPI
-    tempContainer.style.lineHeight = "1.5"; // Improve spacing
-    tempContainer.style.overflow = "hidden";
+      // Create a hidden container with the content
+      const printableElement = document.createElement("div");
+      printableElement.innerHTML = content;
+      printableElement.style.padding = "20px";
+      printableElement.style.fontFamily = "Arial, sans-serif";
+      printableElement.style.lineHeight = "1.8"; // Ensure proper spacing
+      printableElement.style.wordWrap = "break-word";
+      printableElement.style.whiteSpace = "normal";
 
-    // Ensure proper page breaks for long content
-    tempContainer.querySelectorAll("p, div, img, table").forEach((el) => {
-      (el as HTMLElement).style.pageBreakInside = "avoid";
-    });
+      // Fix table spacing
+      printableElement.querySelectorAll("p, div, table").forEach((element) => {
+        (element as HTMLElement).style.pageBreakInside = "avoid";
+        (element as HTMLElement).style.pageBreakAfter = "auto";
+        (element as HTMLElement).style.marginBottom = "10px";
+      });
 
-    document.body.appendChild(tempContainer);
+      // Fix image spacing
+      printableElement.querySelectorAll("img").forEach((img) => {
+        (img as HTMLElement).style.display = "block"; // Prevent inline overlap
+        (img as HTMLElement).style.maxWidth = "100%"; // Prevent stretching
+        (img as HTMLElement).style.height = "auto"; // Maintain aspect ratio
+        (img as HTMLElement).style.pageBreakInside = "avoid";
+        (img as HTMLElement).style.margin = "10px 0"; // Center images and add spacing
+      });
 
-    try {
+      document.body.appendChild(printableElement);
+
+      // Dynamically import html2pdf
       const html2pdf = (await import("html2pdf.js")).default;
-      await html2pdf()
+
+      html2pdf()
+        .from(printableElement)
         .set({
-          margin: [10, 10, 10, 10], // Margins for better spacing
+          margin: 0.5,
           filename: "document.pdf",
-          image: { type: "jpeg", quality: 0.98 },
+          image: { type: "jpeg", quality: 1.0 },
           html2canvas: {
             scale: 2,
             useCORS: true,
-            dpi: 300,
+            allowTaint: true,
+            logging: true,
             letterRendering: true,
-          }, // High-quality rendering
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          },
+          jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
         })
-        .from(tempContainer)
-        .save();
-    } catch (error) {
-      console.error("PDF export failed:", error);
-    } finally {
-      document.body.removeChild(tempContainer); // Cleanup
+        .save()
+        .then(() => {
+          document.body.removeChild(printableElement);
+        })
+        .catch((err: any) => {
+          console.error("PDF Export failed:", err);
+          document.body.removeChild(printableElement);
+        });
     }
   };
 
@@ -131,16 +145,35 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
       const editor = editorRef.current.editor;
       let content = editor.getContent();
 
-      // Convert image src URLs to base64
+      // Convert images to base64 to prevent loss in production
       content = await embedImagesAsBase64(content);
 
-      const htmlContent = `\ufeff<html><body>${content}</body></html>`;
-      const blob = new Blob([htmlContent], {
+      // Wrap content in Word-compatible HTML
+      const wordDocument = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:w="urn:schemas-microsoft-com:office:word"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8">
+          <title>Document</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.5; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            table, th, td { border: 1px solid black; padding: 8px; }
+            img { max-width: 100%; height: auto; }
+          </style>
+        </head>
+        <body>${content}</body>
+        </html>`;
+
+      // Create Blob for Word file
+      const blob = new Blob(["\ufeff", wordDocument], {
         type: "application/msword",
       });
-      const url = URL.createObjectURL(blob);
+
+      // Create a link and trigger download
       const link = document.createElement("a");
-      link.href = url;
+      link.href = URL.createObjectURL(blob);
       link.download = "document.doc";
       document.body.appendChild(link);
       link.click();
