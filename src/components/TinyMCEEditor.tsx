@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import axios from "axios";
 
