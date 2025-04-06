@@ -5,9 +5,13 @@ import axios from "axios";
 
 type SelectInputProps = {
   onFileSelect: (val: string) => void;
+  setIsEditorLoading: (val: boolean) => void;
 };
 
-const SelectInput: FC<SelectInputProps> = ({ onFileSelect }) => {
+const SelectInput: FC<SelectInputProps> = ({
+  onFileSelect,
+  setIsEditorLoading,
+}) => {
   const [selectedFile, setSelectedFile] = useState("");
 
   const handleFileChange = async (event: any) => {
@@ -15,6 +19,7 @@ const SelectInput: FC<SelectInputProps> = ({ onFileSelect }) => {
     setSelectedFile(fileName);
 
     try {
+      setIsEditorLoading(true);
       const baseUrl = import.meta.env.BASE_URL;
       const fileUrl = `${baseUrl}files/${fileName}.docx`;
 
@@ -47,6 +52,7 @@ const SelectInput: FC<SelectInputProps> = ({ onFileSelect }) => {
 
       // Pass converted HTML to TinyMCE
       onFileSelect(htmlContent.html);
+      setIsEditorLoading(false);
     } catch (error) {
       console.error("Error loading document:", error);
     }

@@ -5,6 +5,7 @@ import { Button, Skeleton } from "@mui/material";
 import logo from "../../assets/images/novartis_logo.svg";
 import SelectInput from "../../components/SelectInput";
 import TinyMCEEditor from "../../components/TinyMCEEditor";
+import Loader from "../../components/Loader";
 // import axios from "axios";
 
 const HomePage = () => {
@@ -14,6 +15,7 @@ const HomePage = () => {
   const [connected, setConnected] = useState(false);
   const [correctedSentence, setCorrectedSentence] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditorLoading, setIsEditorLoading] = useState(false);
 
   const editorRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -127,12 +129,19 @@ const HomePage = () => {
 
       <div className="flex gap-5 px-3">
         <div className="w-[70%]">
-          <TinyMCEEditor
-            setEditorContent={setEditorContent}
-            setSelectedText={setSelectedText}
-            editorRef={editorRef}
-            editorContent={editorContent}
-          />
+          {isEditorLoading ? (
+            <div className="h-[calc(100vh-15vh)]">
+              <Loader />
+            </div>
+          ) : (
+            <TinyMCEEditor
+              setEditorContent={setEditorContent}
+              setSelectedText={setSelectedText}
+              editorRef={editorRef}
+              editorContent={editorContent}
+              setIsEditorLoading={setIsEditorLoading}
+            />
+          )}
         </div>
         <div className="flex-1 pt-24">
           <SelectInput
@@ -148,6 +157,7 @@ const HomePage = () => {
                 editorRef.current.editor.setContent(content);
               }
             }}
+            setIsEditorLoading={setIsEditorLoading}
           />
 
           {correctedSentence && selectedText ? (

@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, useEffect, useState } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import axios from "axios";
 
@@ -7,6 +7,7 @@ type TinyMCEEditorProps = {
   setSelectedText: (val: string) => void;
   editorRef: any;
   editorContent: string;
+  setIsEditorLoading: (val: boolean) => void;
 };
 
 const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
@@ -14,7 +15,10 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   editorRef,
   setSelectedText,
   editorContent,
+  setIsEditorLoading,
 }) => {
+  const [editorHeight, setEditorHeight] = useState(window.innerHeight - 100);
+
   const handleEditorChange = (content: string) => {
     if (
       editorRef.current &&
@@ -220,6 +224,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
     if (!file) return;
 
     try {
+      setIsEditorLoading(true);
       // Create FormData and append the file
       const formData = new FormData();
       formData.append("file", file, file.name);
@@ -235,6 +240,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
 
       // Pass converted HTML to TinyMCE
       setEditorContent(convertResponse.data.html); // Assuming you pass the HTML to TinyMCE's content
+      setIsEditorLoading(false);
     } catch (error) {
       console.error("Error loading document:", error);
     }
@@ -260,10 +266,12 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
         init={{
           browser_spellcheck: true, // Enables browser's native spell check
           contextmenu: false, // Disables TinyMCE's context menu, allows right-click suggestions
-          height: 520,
+          height: editorHeight,
           menubar: true,
           paste_data_images: true,
           plugins: [
+            "exportword",
+            "exportpdf",
             "advlist",
             "autolink",
             "lists",
@@ -295,7 +303,30 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
             "alignleft aligncenter alignright alignjustify | " +
             "bullist numlist outdent indent | " +
             "link image media table emoticons pagebreak codesample | " +
-            "fullscreen preview | customPrint customPDF | removeformat help | exportToPDF exportToWord | uploadWordFile",
+            "fullscreen preview | customPrint | removeformat help | exportpdf | exportword | uploadWordFile ",
+          exportword_converter_options: {
+            document: {
+              size: "A4",
+              margins: {
+                top: "1in",
+                bottom: "1in",
+                left: "1in",
+                right: "1in",
+              },
+            },
+          },
+          exportpdf_options: {
+            page: {
+              format: "A4",
+              orientation: "portrait",
+              margins: {
+                top: "1in",
+                bottom: "1in",
+                left: "1in",
+                right: "1in",
+              },
+            },
+          },
           setup: function (editor: any) {
             // Capture selected text
             editor.on("selectionchange", () => {
