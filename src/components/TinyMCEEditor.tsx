@@ -10,6 +10,8 @@ type TinyMCEEditorProps = {
   setIsEditorLoading: (val: boolean) => void;
 };
 
+const editorHeight = window.innerHeight - 100;
+
 const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   setEditorContent,
   editorRef,
@@ -17,8 +19,6 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
   editorContent,
   setIsEditorLoading,
 }) => {
-  const [editorHeight, setEditorHeight] = useState(window.innerHeight - 100);
-
   const handleEditorChange = (content: string) => {
     if (
       editorRef.current &&
