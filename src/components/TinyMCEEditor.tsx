@@ -256,7 +256,7 @@ const TinyMCEEditor: FC<TinyMCEEditorProps> = ({
         id="uploadWordFile"
       />
       <Editor
-        apiKey="yhot11qrouc4h1dm49vot96dfwacylv1ez9fb6j0lbyibut7"
+        apiKey="sntrrffp01vwkyab7i33tsimz3i977fmtea180mhw3uth2lw"
         onInit={(evt, editor) => {
           console.log(evt);
 
